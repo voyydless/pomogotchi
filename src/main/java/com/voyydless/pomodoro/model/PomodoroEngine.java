@@ -1,6 +1,7 @@
 package com.voyydless.pomodoro.model;
 
 import java.util.Timer;
+import java.util.TimerTask;
 import java.util.function.Consumer;
 
 public class PomodoroEngine {
@@ -21,6 +22,59 @@ public class PomodoroEngine {
         this.remainingSeconds = WORK_MINUTES * 60;
         this.completedSessions = 0;
         updateDisplay();
+    }
+
+    public void start() {
+        if (currentState == TimerState.STOPPED) {
+            currentState = TimerState.WORK;
+            remainingSeconds = WORK_MINUTES * 60;
+        }
+        if (timer != null)
+            timer.cancel();
+
+        timer = new Timer(true);
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                remainingSeconds--;
+                updateDisplay();
+                if (remainingSeconds <=0)
+                    transitionToNextState();
+            }
+        }, 1000, 1000);
+    }
+
+    public void stop() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+    }
+
+    public void reset() {
+        stop();
+        currentState = TimerState.STOPPED;
+        completedSessions = 0;
+        remainingSeconds = WORK_MINUTES * 60;
+        updateDisplay();
+    }
+
+    private void transitionToNextState() {
+        stop();
+        if (currentState == TimerState.WORK) {
+            completedSessions++;
+            if (completedSessions % SESSIONS_BEFORE_LONG_BREAK == 0) {
+                currentState = TimerState.LONG_BREAK;
+                remainingSeconds = LONG_BREAK_MINUTES * 60;
+            } else {
+                currentState = TimerState.SHORT_BREAK;
+                remainingSeconds = SHORT_BREAK_MINUTES * 60;
+            }
+        } else {
+            currentState = TimerState.WORK;
+            remainingSeconds = WORK_MINUTES * 60;
+        }
+        start();
     }
 
     private void updateDisplay() {
